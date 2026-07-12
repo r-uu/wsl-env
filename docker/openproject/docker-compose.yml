@@ -1,0 +1,66 @@
+services:
+  # ============================================================================
+  # OpenProject - Project Management
+  # Web UI: http://localhost:8070
+  # Default credentials: admin / admin (change on first login)
+  # ============================================================================
+  openproject:
+    image: openproject/openproject:15
+    container_name: openproject
+    environment:
+      OPENPROJECT_HTTPS: "false"
+      OPENPROJECT_HOST__NAME: "localhost:8070"
+      DATABASE_URL: "postgresql://openproject:openproject@openproject-db:5432/openproject"
+      OPENPROJECT_SECRET_KEY_BASE: "wsl-local-openproject-secret-key-base-not-for-production"
+      RAILS_CACHE_STORE: "file_store"
+      # --- SMTP über web.de ---
+      OPENPROJECT_EMAIL__DELIVERY__METHOD: "smtp"
+      OPENPROJECT_SMTP__ADDRESS: "smtp.web.de"
+      OPENPROJECT_SMTP__PORT: "587"
+      OPENPROJECT_SMTP__DOMAIN: "web.de"
+      OPENPROJECT_SMTP__AUTHENTICATION: "login"
+      OPENPROJECT_SMTP__ENABLE__STARTTLS__AUTO: "true"
+      OPENPROJECT_SMTP__USER__NAME: "roger.wegner@web.de"
+      OPENPROJECT_SMTP__PASSWORD: "${OPENPROJECT_SMTP_PASSWORD}"
+    ports:
+      - "8070:80"
+    volumes:
+      - openproject-assets:/var/openproject/assets
+      - openproject-cache:/var/openproject/tmp/cache
+    depends_on:
+      openproject-db:
+        condition: service_healthy
+    networks:
+      - openproject-network
+    restart: unless-stopped
+
+  openproject-db:
+    image: postgres:13-alpine
+    container_name: openproject-db
+    environment:
+      POSTGRES_USER: openproject
+      POSTGRES_PASSWORD: openproject
+      POSTGRES_DB: openproject
+    volumes:
+      - openproject-db-data:/var/lib/postgresql/data
+    networks:
+      - openproject-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openproject"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  openproject-network:
+    driver: bridge
+    name: openproject-network
+
+volumes:
+  openproject-db-data:
+    name: openproject-db-data
+  openproject-assets:
+    name: openproject-assets
+  openproject-cache:
+    name: openproject-cache

@@ -24,10 +24,13 @@ Das aktive Projekt wird in `~/.wsl-project` konfiguriert. Jedes Projekt legt sei
 
 ```
 wsl-env/
-└── env/
-    └── wsl/
-        ├── bootstrap.sh    Loader: lädt globale + projektspezifische Aliases
-        └── aliases.sh      Globale, projektunabhängige Aliases und Funktionen
+├── env/
+│   └── wsl/
+│       ├── bootstrap.sh    Loader: lädt globale + projektspezifische Aliases
+│       └── aliases.sh      Globale, projektunabhängige Aliases und Funktionen
+└── docker/
+    └── openproject/
+        └── docker-compose.yml   OpenProject + interne PostgreSQL (Port 8070)
 ```
 
 Projektspezifische Konfiguration (Beispiel `app-pragma-java`):
@@ -187,5 +190,60 @@ Der Bootstrap lädt automatisch alle `*.sh`-Dateien aus `<projekt>/env/wsl/`.
 
 | Projekt | Pfad | Inhalt |
 |---|---|---|
-| `app-pragma-java` | `env/wsl/aliases.sh` | `ruu-pragma-cd`, `ruu-pragma-win-exe` |
-| `java/main` | `env/wsl/aliases.sh` | Maven, Docker, Keycloak, PostgreSQL, Open Liberty |
+| `r-uu-java` | `env/wsl/aliases.sh` | `ruu-cd-lib`, `ruu-cd-pragma`, Maven-Build-Aliases, `ruu-pragma-win-exe` |
+| `app-pragma-java` | `env/wsl/aliases.sh` | veraltet — Nachfolger: `r-uu-java` |
+
+---
+
+## Docker-Stack
+
+Der gesamte Docker-Stack wird beim WSL-Start automatisch hochgefahren. Die `.bashrc` (Quelle: `java/main/config/shared/wsl/.bashrc`, aktiv als Symlink `~/.bashrc`) startet alle Compose-Stacks im Hintergrund.
+
+### Auto-Start-Mechanismus
+
+```
+WSL-Start
+  └─▶ ~/.bashrc
+        ├─▶ docker daemon prüfen / starten
+        ├─▶ java/main/config/shared/docker/docker-compose.yml  (up -d)
+        └─▶ wsl-env/docker/openproject/docker-compose.yml      (up -d)
+```
+
+### Port-Übersicht (alle Container)
+
+| Container | Host-Port | Beschreibung |
+|---|---|---|
+| `postgres` | 5432 | PostgreSQL — shared instance (jeeeraaah, lib_test, keycloak) |
+| `keycloak` | 8080 | Keycloak IAM — Admin: http://localhost:8080/admin |
+| `jasperreports` | 8090 | JasperReports REST-API — http://localhost:8090 |
+| `openproject` | **8070** | OpenProject PM — http://localhost:8070 |
+| `openproject-db` | *(intern)* | PostgreSQL ausschließlich für OpenProject |
+
+### Compose-Dateien
+
+| Stack | Datei | Zugehöriges Repo |
+|---|---|---|
+| Haupt-Stack (Postgres, Keycloak, JasperReports) | `java/main/config/shared/docker/docker-compose.yml` | `java/main` |
+| OpenProject | `wsl-env/docker/openproject/docker-compose.yml` | `wsl-env` (dieses Repo) |
+
+### OpenProject
+
+- URL: http://localhost:8070
+- Standard-Login: `admin` / `admin` (Passwort-Änderung beim ersten Login erzwungen)
+- Eigene interne PostgreSQL (`openproject-db`), kein Portkonflikt mit dem Haupt-Stack
+- Separates Docker-Netzwerk `openproject-network`
+
+---
+
+## Verzeichnisstruktur (vollständig)
+
+```
+wsl-env/
+├── env/
+│   └── wsl/
+│       ├── bootstrap.sh          Loader: lädt globale + projektspezifische Aliases
+│       └── aliases.sh            Globale, projektunabhängige Aliases und Funktionen
+└── docker/
+    └── openproject/
+        └── docker-compose.yml    OpenProject + interne PostgreSQL (Port 8070)
+```

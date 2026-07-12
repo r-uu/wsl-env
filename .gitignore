@@ -1,0 +1,8 @@
+# Umgebungsvariablen mit Zugangsdaten
+.env
+.env.*
+!.env.example
+
+# Optional: Docker-Volumes falls lokal gemountet
+# pgdata/
+# assets/
